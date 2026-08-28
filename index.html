@@ -5,27 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>School AI</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
   :root{
-    --bg:#f4f5f7; --bg-elev:#ffffff; --text:#1b1d23; --text-dim:#5b616e;
-    --border:#e1e3e8; --accent:#3f6df0; --accent-text:#ffffff;
-    --danger:#d94a4a; --ok:#2f9e58; --warn:#c98a1c;
-    --shadow:0 1px 3px rgba(20,20,30,.08),0 1px 2px rgba(20,20,30,.06);
+    /* paper + ink: warm neutrals, a fountain-pen blue accent */
+    --bg:#f5f1e6; --bg-elev:#fdfbf5; --text:#26221a; --text-dim:#6f6a5b;
+    --border:#e3dcc8; --accent:#28459c; --accent-text:#ffffff;
+    --danger:#a63d34; --ok:#2f7a4f; --warn:#a3701a;
+    --shadow:0 1px 3px rgba(38,34,26,.09),0 1px 2px rgba(38,34,26,.07);
     --radius:12px;
+    --font-display:"Fraunces",Georgia,"Times New Roman",serif;
+    --font-body:"Work Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --font-mono:"IBM Plex Mono","SF Mono",Menlo,monospace;
   }
   @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#15171c; --bg-elev:#1e2129; --text:#e8e9ee; --text-dim:#9298a6;
-      --border:#2c3038; --accent:#6f8dfb; --accent-text:#0e1116;
-      --danger:#f0736f; --ok:#5cc987; --warn:#e0a94a;
-      --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+    :root:not([data-theme="light"]){
+      --bg:#181a1f; --bg-elev:#212329; --text:#eae6d9; --text-dim:#9a9585;
+      --border:#33353c; --accent:#8fa4e8; --accent-text:#12141a;
+      --danger:#e0847a; --ok:#6fcf97; --warn:#e0ac5c;
+      --shadow:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.3);
     }
+  }
+  :root[data-theme="dark"]{
+    --bg:#181a1f; --bg-elev:#212329; --text:#eae6d9; --text-dim:#9a9585;
+    --border:#33353c; --accent:#8fa4e8; --accent-text:#12141a;
+    --danger:#e0847a; --ok:#6fcf97; --warn:#e0ac5c;
+    --shadow:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.3);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
     background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:var(--font-body);
     display:flex; flex-direction:column; min-height:100vh;
   }
   header{
@@ -34,19 +46,20 @@
     position:sticky; top:0; z-index:10;
   }
   header .logo{font-size:1.4rem;}
-  header h1{font-size:1.05rem; margin:0; font-weight:700; flex:1;}
-  header .status{font-size:.75rem; color:var(--text-dim);}
+  header h1{font-family:var(--font-display); font-size:1.2rem; margin:0; font-weight:600; letter-spacing:.01em; flex:1; text-wrap:balance;}
+  header .status{font-size:.75rem; color:var(--text-dim); font-family:var(--font-mono);}
   nav{
-    display:flex; gap:.35rem; padding:.6rem 1rem; overflow-x:auto;
+    display:flex; gap:.3rem; padding:.6rem 1rem 0; overflow-x:auto;
     border-bottom:1px solid var(--border); background:var(--bg-elev);
   }
   nav button{
-    border:1px solid transparent; background:transparent; color:var(--text-dim);
-    padding:.5rem .85rem; border-radius:999px; font-size:.85rem; font-weight:600;
-    cursor:pointer; white-space:nowrap; transition:background .15s,color .15s;
+    border:1px solid var(--border); border-bottom:none; background:var(--bg);
+    color:var(--text-dim); font-family:var(--font-body);
+    padding:.5rem .9rem .55rem; border-radius:8px 8px 0 0; font-size:.85rem; font-weight:600;
+    cursor:pointer; white-space:nowrap; transition:background .15s,color .15s; position:relative; top:1px;
   }
-  nav button:hover{background:var(--bg);}
-  nav button.active{background:var(--accent); color:var(--accent-text);}
+  nav button:hover{color:var(--text);}
+  nav button.active{background:var(--bg-elev); color:var(--accent); border-color:var(--border); border-bottom:1px solid var(--bg-elev);}
   main{flex:1; width:100%; max-width:840px; margin:0 auto; padding:1rem; padding-bottom:3rem;}
   .panel{display:none;}
   .panel.active{display:block; animation:fade .15s ease-out;}
@@ -55,7 +68,7 @@
     background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius);
     padding:1rem; margin-bottom:1rem; box-shadow:var(--shadow);
   }
-  .card h2{margin:0 0 .6rem; font-size:1rem;}
+  .card h2{margin:0 0 .6rem; font-size:1.05rem; font-family:var(--font-display); font-weight:600;}
   .row{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;}
   label{font-size:.8rem; color:var(--text-dim); font-weight:600; display:block; margin-bottom:.25rem;}
   input[type=text], input[type=number], input[type=date], input[type=password], select, textarea{
@@ -123,15 +136,15 @@
   .badge.med{background:var(--warn); color:#1b1d23;}
 
   /* Timer */
-  #timerDisplay{font-size:3.2rem; font-weight:800; text-align:center; margin:.6rem 0; font-variant-numeric:tabular-nums;}
-  #timerMode{text-align:center; color:var(--text-dim); font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; font-weight:700;}
+  #timerDisplay{font-family:var(--font-mono); font-size:3.2rem; font-weight:600; text-align:center; margin:.6rem 0; font-variant-numeric:tabular-nums; color:var(--accent);}
+  #timerMode{text-align:center; color:var(--text-dim); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; font-weight:600;}
   .timer-controls{display:flex; justify-content:center; gap:.5rem; margin-top:.8rem;}
 
   /* GPA */
   table{width:100%; border-collapse:collapse; font-size:.85rem;}
   th,td{text-align:left; padding:.4rem; border-bottom:1px solid var(--border);}
   th{color:var(--text-dim); font-weight:600; font-size:.75rem; text-transform:uppercase;}
-  #gpaResult{font-size:1.6rem; font-weight:800; text-align:center; margin-top:.6rem;}
+  #gpaResult{font-family:var(--font-mono); font-size:1.6rem; font-weight:600; text-align:center; margin-top:.6rem; font-variant-numeric:tabular-nums; color:var(--accent);}
 
   .empty{color:var(--text-dim); font-size:.85rem; text-align:center; padding:1rem 0;}
   code{background:var(--bg); padding:.1rem .35rem; border-radius:4px; font-size:.85em;}
