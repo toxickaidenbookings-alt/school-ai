@@ -7,7 +7,7 @@ A single-page study assistant that runs entirely in a browser tab. No install, n
 - **Chat** — an AI homework helper. Calls the Anthropic API directly from your browser using your own API key (stored only in that browser's local storage). Explains and guides rather than just handing over answers.
 - **Flashcards** — paste `term :: definition` lines to build a deck, then study with flip cards and a simple "still learning / got it" queue.
 - **Planner** — track assignments with subject, due date, and priority; overdue/due-today badges. Can sync upcoming work directly from Canvas.
-- **Timer** — a Pomodoro-style focus/break timer.
+- **Timer** — a Pomodoro-style focus/break timer, plus focus sounds (white/pink/brown noise, rain, ambient drone) generated live with the Web Audio API — no streaming or downloads, so it works even when the network blocks everything else.
 - **GPA calculator** — standard 4.0-scale weighted GPA from your course list.
 - **Settings** — set/remove your API key and model, and back up all your data (planner, decks, GPA, key) as text you can copy out and paste back in later, since everything lives in local storage on one device/browser.
 
