@@ -118,6 +118,28 @@
     cursor:pointer; background:var(--bg);
   }
   .deck-pill.active{background:var(--accent); color:var(--accent-text); border-color:var(--accent);}
+  .mode-btn.active{background:var(--accent); color:var(--accent-text); border-color:var(--accent);}
+  .quiz-box{border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem; background:var(--bg);}
+  .quiz-choice{
+    text-align:left; padding:.65rem .85rem; border-radius:8px; border:1px solid var(--border);
+    background:var(--bg-elev); cursor:pointer; font-size:.9rem; font-family:var(--font-body); color:var(--text);
+  }
+  .quiz-choice:hover:not(:disabled){border-color:var(--accent);}
+  .quiz-choice:disabled{cursor:default;}
+  .quiz-choice.correct{background:var(--ok); color:#fff; border-color:var(--ok);}
+  .quiz-choice.incorrect{background:var(--danger); color:#fff; border-color:var(--danger);}
+
+  /* Notes */
+  .note-item{
+    display:flex; align-items:center; gap:.6rem; padding:.65rem .3rem; border-bottom:1px solid var(--border);
+    cursor:pointer;
+  }
+  .note-item:last-child{border-bottom:none;}
+  .note-item:hover{background:var(--bg);}
+  .note-item .info{flex:1; min-width:0;}
+  .note-item .title{font-weight:600; font-size:.9rem;}
+  .note-item .snippet{font-size:.78rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .note-item .meta{font-size:.72rem; color:var(--text-dim); white-space:nowrap;}
 
   /* Planner */
   .task{
@@ -161,6 +183,7 @@
 <nav id="tabs">
   <button data-tab="chat" class="active">💬 Chat</button>
   <button data-tab="flash">🗂️ Flashcards</button>
+  <button data-tab="notes">📝 Notes</button>
   <button data-tab="plan">📋 Planner</button>
   <button data-tab="timer">⏱️ Timer</button>
   <button data-tab="gpa">🧮 GPA</button>
@@ -198,18 +221,49 @@
     </div>
 
     <div class="card" id="studyCard" style="display:none;">
-      <h2 id="studyDeckTitle">Study</h2>
-      <div class="flash-stage" id="flashStage">
-        <div class="flash-card" id="flashCard">
-          <div class="flash-face front" id="flashFront">—</div>
-          <div class="flash-face back" id="flashBack">—</div>
+      <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:.6rem;">
+        <h2 id="studyDeckTitle" style="margin:0;">Study</h2>
+        <div class="row" style="gap:.3rem;">
+          <button class="btn secondary mode-btn active" id="modeFlipBtn">Flip cards</button>
+          <button class="btn secondary mode-btn" id="modeQuizBtn">Quiz me</button>
         </div>
       </div>
-      <div class="row" style="justify-content:center;">
-        <button class="btn secondary" id="stillLearning">🔁 Still learning</button>
-        <button class="btn" id="gotIt">✅ Got it</button>
+
+      <div id="flipModeUI">
+        <div class="flash-stage" id="flashStage">
+          <div class="flash-card" id="flashCard">
+            <div class="flash-face front" id="flashFront">—</div>
+            <div class="flash-face back" id="flashBack">—</div>
+          </div>
+        </div>
+        <div class="row" style="justify-content:center;">
+          <button class="btn secondary" id="stillLearning">🔁 Still learning</button>
+          <button class="btn" id="gotIt">✅ Got it</button>
+        </div>
+        <p class="muted" id="studyProgress" style="text-align:center; margin-top:.6rem;"></p>
       </div>
-      <p class="muted" id="studyProgress" style="text-align:center; margin-top:.6rem;"></p>
+
+      <div id="quizModeUI" style="display:none;">
+        <p class="muted" id="quizProgress" style="text-align:center;"></p>
+        <div class="quiz-box" id="quizQuestionBox">
+          <div id="quizPrompt" style="font-size:1.1rem; font-weight:600; text-align:center; margin-bottom:.8rem; font-family:var(--font-display);"></div>
+          <div id="quizChoices" style="display:flex; flex-direction:column; gap:.5rem;"></div>
+          <div class="row" id="quizTypedRow" style="display:none; margin-top:.2rem;">
+            <input type="text" id="quizTypedInput" placeholder="Type your answer" style="flex:1;">
+            <button class="btn" id="quizSubmitBtn">Submit</button>
+          </div>
+        </div>
+        <div class="row" style="justify-content:center; margin-top:.7rem;">
+          <button class="btn" id="quizNextBtn" style="display:none;">Next →</button>
+        </div>
+        <div id="quizResult" style="display:none; text-align:center; margin-top:.5rem;">
+          <p id="quizScoreText" style="font-size:1.3rem; font-weight:700; font-family:var(--font-mono);"></p>
+          <div class="row" style="justify-content:center;">
+            <button class="btn secondary" id="quizRetryMissed" style="display:none;">Retry missed</button>
+            <button class="btn" id="quizRetryAll">Retry all</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="editDeckCard" style="display:none;">
@@ -221,6 +275,41 @@
         <button class="btn danger" id="deleteDeckBtn">Delete deck</button>
       </div>
       <div id="cardListPreview" class="muted" style="margin-top:.6rem;"></div>
+    </div>
+  </section>
+
+  <!-- NOTES -->
+  <section class="panel" id="panel-notes">
+    <div class="card">
+      <h2>Notes</h2>
+      <div class="row" style="margin-bottom:.6rem;">
+        <input type="text" id="noteSearch" placeholder="Search notes…" style="flex:1;">
+        <button class="btn" id="newNoteBtn">+ New note</button>
+      </div>
+      <div id="noteList"></div>
+      <div class="empty" id="noteEmpty" style="display:none;">No notes yet — start one above.</div>
+    </div>
+
+    <div class="card" id="noteEditorCard" style="display:none;">
+      <div class="row">
+        <div class="field" style="flex:2; min-width:160px;">
+          <label>Title</label>
+          <input type="text" id="noteTitle" placeholder="Untitled note">
+        </div>
+        <div class="field" style="flex:1; min-width:120px;">
+          <label>Subject</label>
+          <input type="text" id="noteSubject" placeholder="Chemistry">
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="noteBody" style="min-height:220px;" placeholder="Write here…"></textarea>
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="closeNoteBtn">Back to list</button>
+        <button class="btn danger" id="deleteNoteBtn">Delete note</button>
+        <span class="muted" id="noteSavedHint" style="margin-left:auto;"></span>
+      </div>
     </div>
   </section>
 
@@ -615,6 +704,7 @@
     studyQueue = decks[name].map((c,i)=>i);
     studyIndex = 0;
     showCard();
+    setMode('flip');
   }
   function showCard(){
     const card = $('#flashCard');
@@ -646,7 +736,233 @@
   $('#gotIt').addEventListener('click', ()=> nextCard(true));
   $('#stillLearning').addEventListener('click', ()=> nextCard(false));
 
+  /* ---- Quiz mode ---- */
+  let studyMode = 'flip';
+  let quizQueue = [];
+  let quizPos = 0;
+  let quizScore = 0;
+  let quizMissed = [];
+
+  function shuffled(arr){
+    const a = arr.slice();
+    for(let i=a.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function setMode(mode){
+    studyMode = mode;
+    $('#modeFlipBtn').classList.toggle('active', mode==='flip');
+    $('#modeQuizBtn').classList.toggle('active', mode==='quiz');
+    $('#flipModeUI').style.display = mode==='flip' ? 'block' : 'none';
+    $('#quizModeUI').style.display = mode==='quiz' ? 'block' : 'none';
+    if(mode==='quiz') buildQuiz();
+  }
+  $('#modeFlipBtn').addEventListener('click', ()=> setMode('flip'));
+  $('#modeQuizBtn').addEventListener('click', ()=> setMode('quiz'));
+
+  function buildQuiz(){
+    if(!activeDeck || !decks[activeDeck].length) return;
+    quizQueue = shuffled(decks[activeDeck].map((c,i)=>i));
+    quizPos = 0;
+    quizScore = 0;
+    quizMissed = [];
+    $('#quizResult').style.display = 'none';
+    $('#quizQuestionBox').style.display = 'block';
+    renderQuizQuestion();
+  }
+  function renderQuizQuestion(){
+    const deck = decks[activeDeck];
+    if(quizPos >= quizQueue.length){
+      finishQuiz();
+      return;
+    }
+    $('#quizProgress').textContent = 'Question ' + (quizPos+1) + ' of ' + quizQueue.length + ' · Score ' + quizScore;
+    const cardIdx = quizQueue[quizPos];
+    const card = deck[cardIdx];
+    $('#quizPrompt').textContent = card.front;
+    $('#quizNextBtn').style.display = 'none';
+
+    const uniqueBacks = [...new Set(deck.map(c=>c.back))].filter(b=>b!==card.back);
+    const choicesWrap = $('#quizChoices');
+    const typedRow = $('#quizTypedRow');
+    choicesWrap.innerHTML = '';
+
+    if(uniqueBacks.length >= 3){
+      typedRow.style.display = 'none';
+      const distractors = shuffled(uniqueBacks).slice(0,3);
+      const options = shuffled([card.back, ...distractors]);
+      options.forEach(opt=>{
+        const btn = document.createElement('button');
+        btn.className = 'quiz-choice';
+        btn.textContent = opt;
+        btn.addEventListener('click', ()=> answerQuiz(opt === card.back, btn, card.back));
+        choicesWrap.appendChild(btn);
+      });
+    } else {
+      typedRow.style.display = 'flex';
+      $('#quizTypedInput').value = '';
+      $('#quizTypedInput').focus();
+      const submit = ()=>{
+        const val = $('#quizTypedInput').value.trim().toLowerCase();
+        answerQuiz(val === card.back.trim().toLowerCase(), null, card.back);
+      };
+      $('#quizSubmitBtn').onclick = submit;
+      $('#quizTypedInput').onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); } };
+    }
+  }
+  function answerQuiz(correct, clickedBtn, correctText){
+    const deck = decks[activeDeck];
+    const cardIdx = quizQueue[quizPos];
+    if(correct){ quizScore++; }
+    else { quizMissed.push(cardIdx); }
+
+    $$('#quizChoices .quiz-choice').forEach(btn=>{
+      btn.disabled = true;
+      if(btn.textContent === correctText) btn.classList.add('correct');
+      else if(btn === clickedBtn) btn.classList.add('incorrect');
+    });
+    if(!clickedBtn){
+      $('#quizTypedInput').disabled = true;
+      $('#quizSubmitBtn').disabled = true;
+      if(!correct){
+        const hint = document.createElement('div');
+        hint.className = 'muted';
+        hint.style.marginTop = '.5rem';
+        hint.textContent = 'Correct answer: ' + correctText;
+        $('#quizChoices').appendChild(hint);
+      }
+    }
+    $('#quizProgress').textContent = 'Question ' + (quizPos+1) + ' of ' + quizQueue.length + ' · Score ' + quizScore;
+    $('#quizNextBtn').style.display = 'inline-block';
+  }
+  $('#quizNextBtn').addEventListener('click', ()=>{
+    quizPos++;
+    $('#quizTypedInput').disabled = false;
+    $('#quizSubmitBtn').disabled = false;
+    renderQuizQuestion();
+  });
+  function finishQuiz(){
+    $('#quizQuestionBox').style.display = 'none';
+    $('#quizNextBtn').style.display = 'none';
+    $('#quizResult').style.display = 'block';
+    $('#quizProgress').textContent = '';
+    $('#quizScoreText').textContent = quizScore + ' / ' + quizQueue.length + ' correct';
+    $('#quizRetryMissed').style.display = quizMissed.length ? 'inline-block' : 'none';
+  }
+  $('#quizRetryAll').addEventListener('click', buildQuiz);
+  $('#quizRetryMissed').addEventListener('click', ()=>{
+    quizQueue = shuffled(quizMissed);
+    quizPos = 0; quizScore = 0; quizMissed = [];
+    $('#quizResult').style.display = 'none';
+    $('#quizQuestionBox').style.display = 'block';
+    renderQuizQuestion();
+  });
+
   renderDeckList();
+
+  /* ---------- Notes ---------- */
+  let notes = store.get('notes', []);
+  let currentNoteId = null;
+  let noteSaveTimer = null;
+
+  function noteSnippet(n){
+    const text = (n.body||'').replace(/\s+/g,' ').trim();
+    return text.length > 90 ? text.slice(0,90)+'…' : (text || 'Empty note');
+  }
+  function noteDate(ts){
+    if(!ts) return '';
+    return new Date(ts).toLocaleDateString(undefined,{month:'short', day:'numeric'});
+  }
+  function renderNoteList(){
+    const q = $('#noteSearch').value.trim().toLowerCase();
+    const list = $('#noteList');
+    list.innerHTML = '';
+    const filtered = notes
+      .filter(n => !q || (n.title+' '+n.subject+' '+n.body).toLowerCase().includes(q))
+      .sort((a,b) => (b.updated||0) - (a.updated||0));
+    const emptyEl = $('#noteEmpty');
+    emptyEl.style.display = filtered.length ? 'none' : 'block';
+    emptyEl.textContent = notes.length ? 'No notes match your search.' : 'No notes yet — start one above.';
+    filtered.forEach(n=>{
+      const row = document.createElement('div');
+      row.className = 'note-item';
+      const info = document.createElement('div');
+      info.className = 'info';
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = (n.title || 'Untitled note') + (n.subject ? ' — ' + n.subject : '');
+      const snippet = document.createElement('div');
+      snippet.className = 'snippet';
+      snippet.textContent = noteSnippet(n);
+      info.appendChild(title);
+      info.appendChild(snippet);
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = noteDate(n.updated);
+      row.appendChild(info);
+      row.appendChild(meta);
+      row.addEventListener('click', ()=> openNote(n.id));
+      list.appendChild(row);
+    });
+  }
+  function openNote(id){
+    currentNoteId = id;
+    const n = notes.find(x=>x.id===id);
+    if(!n) return;
+    $('#noteTitle').value = n.title || '';
+    $('#noteSubject').value = n.subject || '';
+    $('#noteBody').value = n.body || '';
+    $('#noteSavedHint').textContent = '';
+    $('#noteEditorCard').style.display = 'block';
+    $('#noteTitle').focus();
+  }
+  function saveCurrentNote(){
+    const n = notes.find(x=>x.id===currentNoteId);
+    if(!n) return;
+    n.title = $('#noteTitle').value;
+    n.subject = $('#noteSubject').value;
+    n.body = $('#noteBody').value;
+    n.updated = Date.now();
+    store.set('notes', notes);
+    $('#noteSavedHint').textContent = 'Saved';
+    renderNoteList();
+  }
+  function scheduleSave(){
+    clearTimeout(noteSaveTimer);
+    $('#noteSavedHint').textContent = 'Saving…';
+    noteSaveTimer = setTimeout(saveCurrentNote, 500);
+  }
+  $('#newNoteBtn').addEventListener('click', ()=>{
+    const n = {id: Date.now()+Math.random().toString(36).slice(2), title:'', subject:'', body:'', updated: Date.now()};
+    notes.unshift(n);
+    store.set('notes', notes);
+    renderNoteList();
+    openNote(n.id);
+  });
+  $('#noteTitle').addEventListener('input', scheduleSave);
+  $('#noteSubject').addEventListener('input', scheduleSave);
+  $('#noteBody').addEventListener('input', scheduleSave);
+  $('#closeNoteBtn').addEventListener('click', ()=>{
+    clearTimeout(noteSaveTimer);
+    saveCurrentNote();
+    currentNoteId = null;
+    $('#noteEditorCard').style.display = 'none';
+    renderNoteList();
+  });
+  $('#deleteNoteBtn').addEventListener('click', ()=>{
+    if(!currentNoteId) return;
+    if(!confirm('Delete this note?')) return;
+    clearTimeout(noteSaveTimer);
+    notes = notes.filter(n=>n.id!==currentNoteId);
+    store.set('notes', notes);
+    currentNoteId = null;
+    $('#noteEditorCard').style.display = 'none';
+    renderNoteList();
+  });
+  $('#noteSearch').addEventListener('input', renderNoteList);
+  renderNoteList();
 
   /* ---------- Planner ---------- */
   let tasks = store.get('tasks', []);
