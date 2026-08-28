@@ -345,13 +345,25 @@
     </div>
 
     <div class="card">
+      <h2>Paste in from Canvas</h2>
+      <p class="muted">If your school won't let you create an API token, this needs no login at all — open Canvas, copy your assignment list or To-Do sidebar, and paste it below.</p>
+      <p class="muted">For a clean paste, one assignment per line as <code>Title :: Subject :: Due date</code> (subject and date are optional) — e.g. <code>Essay Draft 1 :: English 10 :: Sep 5</code>. Pasted it messier than that? Click <strong>Clean up with AI</strong> to sort it out first (needs an API key set in Settings).</p>
+      <textarea id="importText" placeholder="Paste assignments here…" style="min-height:110px;"></textarea>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn" id="importTasksBtn">Add to planner</button>
+        <button class="btn secondary" id="aiCleanupBtn">✨ Clean up with AI</button>
+      </div>
+      <p class="muted" id="importHint" style="margin-top:.4rem;"></p>
+    </div>
+
+    <div class="card">
       <div class="row" style="justify-content:space-between; align-items:center;">
         <h2 style="margin:0;">Assignments</h2>
         <button class="btn secondary" id="syncCanvasBtn">🔄 Sync Canvas</button>
       </div>
       <p class="muted" id="canvasSyncHint"></p>
       <div id="taskList"></div>
-      <div class="empty" id="taskEmpty" style="display:none;">Nothing on your list yet. Add an assignment above, or sync from Canvas.</div>
+      <div class="empty" id="taskEmpty" style="display:none;">Nothing on your list yet. Add an assignment above, paste some in from Canvas, or sync from Canvas.</div>
     </div>
   </section>
 
@@ -420,7 +432,7 @@
 
     <div class="card">
       <h2>Canvas sync</h2>
-      <p class="muted">Pulls your upcoming assignments and due dates from Canvas straight into the Planner. Needs a personal access token, not just the link — in Canvas go to <strong>Account → Settings → New Access Token</strong>, generate one, and paste it below with your school's Canvas link. The token is stored only in this browser's local storage and sent only to your Canvas domain. Some schools block direct browser requests to Canvas (CORS); if sync keeps failing, that's likely why, and it isn't something this page can work around.</p>
+      <p class="muted">Pulls your upcoming assignments and due dates from Canvas straight into the Planner. Needs a personal access token, not just the link — in Canvas go to <strong>Account → Settings → New Access Token</strong>, generate one, and paste it below with your school's Canvas link. The token is stored only in this browser's local storage and sent only to your Canvas domain. Some schools block direct browser requests to Canvas (CORS), and some disable student access tokens entirely (the button shows greyed out) — if either is true for you, use <strong>Planner → Paste in from Canvas</strong> instead, which needs no token at all.</p>
       <div class="field">
         <label>Canvas link or domain</label>
         <input type="text" id="canvasDomainInput" placeholder="https://yourschool.instructure.com">
@@ -1075,6 +1087,7 @@
       }
       badges.appendChild(makeBadge(t.priority==='high'?'High':t.priority==='med'?'Medium':'Low', t.priority));
       if(t.source==='canvas'){ badges.appendChild(makeBadge('Canvas','low')); }
+      else if(t.source==='import'){ badges.appendChild(makeBadge('Imported','low')); }
 
       const del = document.createElement('button');
       del.className = 'icon-btn';
@@ -1142,7 +1155,7 @@
       items.forEach(item=>{
         if(!item.plannable) return;
         const canvasId = item.plannable_type + ':' + item.plannable_id;
-        const due = item.plannable.due_at ? item.plannable.due_at.slice(0,10) : '';
+        const due = item.plannable.due_at ? toISODateLocal(new Date(item.plannable.due_at)) : '';
         const title = item.plannable.title || item.plannable_type;
         const subject = item.context_name || '';
         const link = item.html_url || '';
@@ -1172,6 +1185,107 @@
     }
   }
   $('#syncCanvasBtn').addEventListener('click', syncCanvas);
+
+  /* ---- Paste import ---- */
+  function toISODateLocal(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function normalizeImportDate(raw){
+    const v = (raw||'').trim();
+    if(!v) return '';
+    const now = new Date();
+    const hasYear = /\b(19|20)\d{2}\b/.test(v);
+    // "Sep 5" with no year parses to year 2001 in this engine, so supply the current year ourselves.
+    let d = hasYear ? new Date(v) : new Date(v + ' ' + now.getFullYear());
+    if(isNaN(d.getTime())) return '';
+    if(!hasYear && (d - now) / 86400000 < -120){
+      // a dateless "Jan 5" pasted in November means next year, not four years ago
+      d = new Date(v + ' ' + (now.getFullYear()+1));
+      if(isNaN(d.getTime())) return '';
+    }
+    return toISODateLocal(d);
+  }
+  function parseImportText(text){
+    return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+      const parts = line.split('::').map(s=>s.trim());
+      return {
+        title: parts[0] || '',
+        subject: parts[1] || '',
+        due: normalizeImportDate(parts[2] || '')
+      };
+    }).filter(item=>item.title);
+  }
+  $('#importTasksBtn').addEventListener('click', ()=>{
+    const items = parseImportText($('#importText').value);
+    if(!items.length){
+      $('#importHint').textContent = 'Nothing to add — one assignment per line.';
+      return;
+    }
+    items.forEach((item, i)=>{
+      tasks.push({
+        id: Date.now()+Math.random().toString(36).slice(2)+i,
+        title: item.title, subject: item.subject, due: item.due,
+        priority:'med', done:false, source:'import'
+      });
+    });
+    store.set('tasks', tasks);
+    renderTasks();
+    $('#importText').value = '';
+    $('#importHint').textContent = 'Added ' + items.length + ' assignment(s).';
+  });
+
+  $('#aiCleanupBtn').addEventListener('click', async ()=>{
+    const raw = $('#importText').value.trim();
+    if(!raw){ $('#importHint').textContent = 'Paste something in first.'; return; }
+    const apiKey = store.get('apiKey','');
+    if(!apiKey){
+      $('#importHint').textContent = 'Add an API key in Settings to use AI cleanup — or just use the Title :: Subject :: Due date format above and skip this button.';
+      return;
+    }
+    const btn = $('#aiCleanupBtn');
+    btn.disabled = true;
+    $('#importHint').textContent = 'Reading through that…';
+    try{
+      const model = store.get('model','claude-sonnet-5');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{
+          'content-type':'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1024,
+          system: "Extract a list of school assignments from text pasted off a Canvas LMS page (it may be messy: repeated whitespace, sidebar labels, times, icons-as-text). Reply with ONLY a JSON array, no markdown fences, no commentary. Each element: {\"title\":string, \"subject\":string (course name, empty string if unclear), \"due\":string (a plain date like \"2026-09-05\" or \"Sep 5\", empty string if no due date is given)}. Skip anything that isn't a gradable assignment/quiz/discussion (e.g. announcements, nav labels).",
+          messages: [{role:'user', content: raw}]
+        })
+      });
+      if(!res.ok){
+        let detail = res.status;
+        try{ const j = await res.json(); detail = (j.error && j.error.message) || detail; }catch(e){}
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      let text = (data.content && data.content[0] && data.content[0].text) || '[]';
+      text = text.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
+      const items = JSON.parse(text);
+      if(!Array.isArray(items) || !items.length){
+        $('#importHint').textContent = "Couldn't find any assignments in that text.";
+        return;
+      }
+      const lines = items
+        .filter(it => it && it.title)
+        .map(it => [it.title, it.subject||'', it.due||''].join(' :: '));
+      $('#importText').value = lines.join('\n');
+      $('#importHint').textContent = 'Found ' + lines.length + ' — review below, then click Add to planner.';
+    }catch(err){
+      $('#importHint').textContent = 'AI cleanup failed: ' + err.message;
+    }finally{
+      btn.disabled = false;
+    }
+  });
 
   /* ---------- Timer ---------- */
   let timerSeconds = 25*60;

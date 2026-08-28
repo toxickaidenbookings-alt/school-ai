@@ -30,7 +30,9 @@ The Planner's **Sync Canvas** button pulls your upcoming assignments, quizzes, a
 2. In this app's **Settings**, paste your Canvas link (the whole URL is fine, e.g. `https://yourschool.instructure.com/courses/12345` — only the domain is kept) and the token.
 3. Go to **Planner** and click **Sync Canvas**. Re-syncing later updates existing items and adds new ones without creating duplicates; it never deletes or touches items you added manually.
 
-This calls the Canvas API directly from your browser, the same way the Chat tab calls Anthropic's. Some schools' Canvas instances block direct browser requests to their API (CORS) — if sync keeps failing with a network error, that's almost certainly why, and it's a setting only your school's IT can change, not something this page can work around.
+This calls the Canvas API directly from your browser, the same way the Chat tab calls Anthropic's. Some schools' Canvas instances block direct browser requests to their API (CORS), and some disable student access tokens outright (the **+ New Access Token** button shows greyed out) — if either is true for you, the token route is a dead end.
+
+**No token? Paste instead.** The Planner's **Paste in from Canvas** box needs no login or token at all — copy your assignment list or To-Do sidebar straight out of Canvas and paste it in. For a clean parse, use one line per assignment as `Title :: Subject :: Due date` (subject and date are optional); if what you pasted is messier than that, **Clean up with AI** will sort it into that format first (needs an API key set in Settings, since that step calls the AI).
 
 ## Getting an API key for the Chat tab
 
