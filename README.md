@@ -6,7 +6,7 @@ A single-page study assistant that runs entirely in a browser tab. No install, n
 
 - **Chat** — an AI homework helper. Calls the Anthropic API directly from your browser using your own API key (stored only in that browser's local storage). Explains and guides rather than just handing over answers.
 - **Flashcards** — paste `term :: definition` lines to build a deck, then study with flip cards and a simple "still learning / got it" queue.
-- **Planner** — track assignments with subject, due date, and priority; overdue/due-today badges.
+- **Planner** — track assignments with subject, due date, and priority; overdue/due-today badges. Can sync upcoming work directly from Canvas.
 - **Timer** — a Pomodoro-style focus/break timer.
 - **GPA calculator** — standard 4.0-scale weighted GPA from your course list.
 - **Settings** — set/remove your API key and model, and back up all your data (planner, decks, GPA, key) as text you can copy out and paste back in later, since everything lives in local storage on one device/browser.
@@ -21,6 +21,16 @@ If you're on a locked-down or shared computer (e.g. a school Chromebook) and can
 2. Open the resulting `https://<your-username>.github.io/school-ai/` URL in a tab. That's it — no download required, and it will keep re-deploying whenever this branch is merged to `main`.
 
 If you *can* save a file, `index.html` is fully self-contained — save it anywhere and double-click to open it in any browser.
+
+## Syncing assignments from Canvas
+
+The Planner's **Sync Canvas** button pulls your upcoming assignments, quizzes, and discussions from Canvas's `planner/items` API (the same feed Canvas's own dashboard uses).
+
+1. In Canvas, go to **Account → Settings**, scroll to **Approved Integrations**, and click **+ New Access Token**. Copy the token — Canvas only shows it once.
+2. In this app's **Settings**, paste your Canvas link (the whole URL is fine, e.g. `https://yourschool.instructure.com/courses/12345` — only the domain is kept) and the token.
+3. Go to **Planner** and click **Sync Canvas**. Re-syncing later updates existing items and adds new ones without creating duplicates; it never deletes or touches items you added manually.
+
+This calls the Canvas API directly from your browser, the same way the Chat tab calls Anthropic's. Some schools' Canvas instances block direct browser requests to their API (CORS) — if sync keeps failing with a network error, that's almost certainly why, and it's a setting only your school's IT can change, not something this page can work around.
 
 ## Getting an API key for the Chat tab
 

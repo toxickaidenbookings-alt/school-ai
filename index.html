@@ -345,9 +345,13 @@
     </div>
 
     <div class="card">
-      <h2>Assignments</h2>
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">Assignments</h2>
+        <button class="btn secondary" id="syncCanvasBtn">🔄 Sync Canvas</button>
+      </div>
+      <p class="muted" id="canvasSyncHint"></p>
       <div id="taskList"></div>
-      <div class="empty" id="taskEmpty" style="display:none;">Nothing on your list yet. Add an assignment above.</div>
+      <div class="empty" id="taskEmpty" style="display:none;">Nothing on your list yet. Add an assignment above, or sync from Canvas.</div>
     </div>
   </section>
 
@@ -415,6 +419,24 @@
     </div>
 
     <div class="card">
+      <h2>Canvas sync</h2>
+      <p class="muted">Pulls your upcoming assignments and due dates from Canvas straight into the Planner. Needs a personal access token, not just the link — in Canvas go to <strong>Account → Settings → New Access Token</strong>, generate one, and paste it below with your school's Canvas link. The token is stored only in this browser's local storage and sent only to your Canvas domain. Some schools block direct browser requests to Canvas (CORS); if sync keeps failing, that's likely why, and it isn't something this page can work around.</p>
+      <div class="field">
+        <label>Canvas link or domain</label>
+        <input type="text" id="canvasDomainInput" placeholder="https://yourschool.instructure.com">
+      </div>
+      <div class="field">
+        <label>Access token</label>
+        <input type="password" id="canvasTokenInput" placeholder="1234~AbCdEf...">
+      </div>
+      <div class="row">
+        <button class="btn" id="saveCanvasBtn">Save</button>
+        <button class="btn secondary" id="clearCanvasBtn">Remove</button>
+      </div>
+      <p class="muted" id="canvasStatus" style="margin-top:.4rem;"></p>
+    </div>
+
+    <div class="card">
       <h2>Your data</h2>
       <p class="muted">Everything (planner, flashcards, GPA, key) lives in this browser's local storage — nothing is uploaded. If this device resets often, copy your data out as a backup and paste it back in later.</p>
       <div class="row">
@@ -478,9 +500,40 @@
   });
   $('#modelSelect').addEventListener('change', ()=> store.set('model', $('#modelSelect').value));
 
+  /* ---------- Settings / Canvas ---------- */
+  function normalizeCanvasDomain(input){
+    let v = (input||'').trim();
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    try{ return new URL(v).hostname; }
+    catch(e){ return v.replace(/^https?:\/\//i,'').split('/')[0]; }
+  }
+  function refreshCanvasStatus(){
+    const domain = store.get('canvasDomain','');
+    $('#canvasStatus').textContent = domain ? ('Connected: ' + domain) : 'Not connected.';
+  }
+  $('#canvasDomainInput').value = store.get('canvasDomain','');
+  $('#canvasTokenInput').value = store.get('canvasToken','');
+  refreshCanvasStatus();
+
+  $('#saveCanvasBtn').addEventListener('click', ()=>{
+    const domain = normalizeCanvasDomain($('#canvasDomainInput').value);
+    store.set('canvasDomain', domain);
+    store.set('canvasToken', $('#canvasTokenInput').value.trim());
+    $('#canvasDomainInput').value = domain;
+    refreshCanvasStatus();
+  });
+  $('#clearCanvasBtn').addEventListener('click', ()=>{
+    store.remove('canvasDomain');
+    store.remove('canvasToken');
+    $('#canvasDomainInput').value = '';
+    $('#canvasTokenInput').value = '';
+    refreshCanvasStatus();
+  });
+
   $('#exportBtn').addEventListener('click', async ()=>{
     const all = {};
-    for(const k of ['apiKey','model','chatHistory','decks','tasks','gpaCourses']){
+    for(const k of ['apiKey','model','chatHistory','decks','tasks','gpaCourses','notes','canvasDomain','canvasToken']){
       all[k] = store.get(k, null);
     }
     const text = JSON.stringify(all);
@@ -994,7 +1047,18 @@
       info.className = 'info';
       const title = document.createElement('div');
       title.className = 'title';
-      title.textContent = t.title + (t.subject ? ' — ' + t.subject : '');
+      const titleText = t.title + (t.subject ? ' — ' + t.subject : '');
+      if(t.url){
+        const link = document.createElement('a');
+        link.href = t.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.color = 'inherit';
+        link.textContent = titleText;
+        title.appendChild(link);
+      } else {
+        title.textContent = titleText;
+      }
       const meta = document.createElement('div');
       meta.className = 'meta';
       let dueText = t.due ? new Date(t.due+'T00:00:00').toLocaleDateString(undefined,{month:'short', day:'numeric'}) : 'No due date';
@@ -1010,6 +1074,7 @@
         else if(diff === 0){ badges.appendChild(makeBadge('Due today','today')); }
       }
       badges.appendChild(makeBadge(t.priority==='high'?'High':t.priority==='med'?'Medium':'Low', t.priority));
+      if(t.source==='canvas'){ badges.appendChild(makeBadge('Canvas','low')); }
 
       const del = document.createElement('button');
       del.className = 'icon-btn';
@@ -1049,6 +1114,64 @@
     renderTasks();
   });
   renderTasks();
+
+  async function syncCanvas(){
+    const domain = store.get('canvasDomain','');
+    const token = store.get('canvasToken','');
+    if(!domain || !token){
+      alert('Add your Canvas link and access token in Settings first.');
+      return;
+    }
+    const btn = $('#syncCanvasBtn');
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Syncing…';
+    $('#canvasSyncHint').textContent = '';
+    try{
+      const today = new Date(); today.setHours(0,0,0,0);
+      const start = today.toISOString();
+      const end = new Date(today.getTime() + 30*86400000).toISOString();
+      const url = 'https://' + domain + '/api/v1/planner/items?start_date=' + encodeURIComponent(start) + '&end_date=' + encodeURIComponent(end) + '&per_page=50';
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+      if(!res.ok){
+        if(res.status === 401) throw new Error('Canvas rejected the token (401) — check it was copied correctly and hasn\'t expired.');
+        throw new Error('Canvas returned status ' + res.status);
+      }
+      const items = await res.json();
+      let added = 0, updated = 0;
+      items.forEach(item=>{
+        if(!item.plannable) return;
+        const canvasId = item.plannable_type + ':' + item.plannable_id;
+        const due = item.plannable.due_at ? item.plannable.due_at.slice(0,10) : '';
+        const title = item.plannable.title || item.plannable_type;
+        const subject = item.context_name || '';
+        const link = item.html_url || '';
+        const existing = tasks.find(x=>x.canvasId === canvasId);
+        if(existing){
+          if(existing.title!==title || existing.due!==due || existing.subject!==subject){
+            existing.title = title; existing.due = due; existing.subject = subject; existing.url = link;
+            updated++;
+          }
+        } else {
+          tasks.push({
+            id: Date.now()+Math.random().toString(36).slice(2)+added,
+            title, subject, due, priority:'med', done:false,
+            source:'canvas', canvasId, url: link
+          });
+          added++;
+        }
+      });
+      store.set('tasks', tasks);
+      renderTasks();
+      $('#canvasSyncHint').textContent = 'Synced ' + new Date().toLocaleTimeString() + ' — ' + added + ' new, ' + updated + ' updated.';
+    }catch(err){
+      $('#canvasSyncHint').textContent = 'Sync failed: ' + err.message + ' If this keeps happening, your school\'s Canvas is likely blocking direct browser requests (CORS) — that\'s a setting only your school\'s IT can change, not something fixable from this page.';
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+  $('#syncCanvasBtn').addEventListener('click', syncCanvas);
 
   /* ---------- Timer ---------- */
   let timerSeconds = 25*60;
