@@ -216,7 +216,7 @@ def vault(pen, cx, cy, R):
 def flying_cards(pen, cx, cy):
     """Cards bursting out of the vault, with scribbly speed lines."""
     for (x, y, sc, deg, rank, suit, seed) in [(150, 960, .17, -30, 'K', 'hearts', 501), (250, 830, .15, 20, 'Q', 'spades', 502),
-                                              (905, 860, .16, 35, 'J', 'diamonds', 503), (905, 1150, .17, -15, 'A', 'clubs', 504)]:
+                                              (905, 860, .16, 35, 'J', 'diamonds', 503)]:
         a = math.atan2(y - cy, x - cx)
         mx, my = x + CARD_W * sc / 2, y + CARD_H * sc / 2
         pen.at(0, 0)
@@ -230,30 +230,65 @@ def flying_cards(pen, cx, cy):
         random.seed(seed + 1)
 
 
-def thief(pen, x, y):
-    """Stick figure tiptoeing over the lasers with a loot sack and a card."""
-    pen.at(0, 0)
-    hip = (x + 15, y + 230)
-    sack = ring(x - 95, y + 95, 58, n=10, j=5)        # slung over his back
+def blob_shape(cx, cy, rx, ry, deg=0, n=10, j=2):
+    """A wobbly oval (shoes, hands), as points."""
+    a = math.radians(deg)
+    pts = []
+    for k in range(n):
+        t = 2 * math.pi * k / n
+        px, py = rx * math.cos(t) + random.uniform(-j, j), ry * math.sin(t) + random.uniform(-j, j)
+        pts.append((cx + px * math.cos(a) - py * math.sin(a), cy + px * math.sin(a) + py * math.cos(a)))
+    return catmull(pts + pts[:3], 6)
+
+
+def thief(pen, x, y, sc=1.0):
+    """Cartoon burglar tiptoeing over the lasers: beanie, eye mask, striped
+    shirt, loot sack on his back, a card held up high. (0, 0) is his face."""
+    pen.at(x, y, sc)
+    line = lambda pts, r=PEN: pen.stroke(wobble_line(pts, 3), r)
+
+    sack = ring(-95, 115, 62, n=10, j=4)                # loot sack behind him
     pen.fill(sack, 'white')
     pen.stroke(sack, PEN)
-    pen.stroke(wobble_line([(x - 115, y + 38), (x - 70, y + 36)], 3), PEN)                 # tied-up top
-    for sh in suit_shape('spades', x - 95, y + 100, 62):
+    line([(-100, 52), (-62, 50)], PEN + 1)              # tied-off neck
+    for sh in suit_shape('spades', -98, 122, 62):
         pen.fill(sh, INK)
-    head = ring(x, y, 52, n=10, j=4)
+    line([(-15, 80), (-50, 72), (-78, 45)])             # back arm gripping the sack
+    pen.fill(blob_shape(-80, 42, 14, 12), 'white')
+    pen.stroke(blob_shape(-80, 42, 14, 12), 6)
+
+    hip = (22, 225)                                     # legs go first so the shirt covers their tops
+    line([hip, (-35, 298), (-78, 350)], PEN + 1)        # back leg, pushing off
+    pen.fill(blob_shape(-88, 360, 34, 15, deg=20), INK)
+    line([hip, (85, 282), (80, 345)], PEN + 1)          # front leg, on tiptoe
+    pen.fill(blob_shape(100, 352, 32, 14, deg=-12), INK)
+
+    body = [(-35, 62), (30, 55), (52, 140), (58, 228), (-5, 245), (-38, 160)]
+    pen.fill(catmull(body + body[:1], 6), 'white')
+    torso = catmull(body + body[:3], 6)
+    for sy, x0, x1 in [(105, -32, 40), (152, -33, 49), (198, -20, 54)]:   # burglar stripes
+        line([(x0 + 4, sy), (x1 - 4, sy + random.uniform(-4, 4))], PEN + 3)
+    pen.stroke(torso, PEN)
+
+    head = ring(0, 0, 52, n=10, j=2)
     pen.fill(head, 'white')
     pen.stroke(head, PEN)
-    pen.fill([(x - 54, y - 18), (x + 54, y - 24), (x + 52, y + 6), (x - 52, y + 10)], INK)   # robber mask
-    pen.blob(x - 20, y - 7, 9, 'white')
-    pen.blob(x + 18, y - 9, 9, 'white')
-    pen.stroke(catmull([(x - 15, y + 26), (x, y + 33), (x + 17, y + 24)]), 5)                # grin
-    pen.stroke(wobble_line([(x + 3, y + 55), hip], 4), PEN)
-    pen.stroke(wobble_line([hip, (x - 55, y + 300), (x - 95, y + 360)], 4), PEN)
-    pen.stroke(wobble_line([hip, (x + 70, y + 310), (x + 60, y + 370), (x + 100, y + 372)], 4), PEN)
-    pen.stroke(wobble_line([(x + 3, y + 95), (x - 45, y + 60), (x - 75, y + 40)], 3), PEN)  # hand holding the sack
-    pen.stroke(wobble_line([(x + 8, y + 110), (x + 80, y + 70), (x + 105, y + 5)], 4), PEN)
-    pen.at(x + 70, y - 110, 0.2, 10)
+    beanie = catmull([(-56, -6), (-47, -42), (-5, -66), (40, -52), (57, -12)], 6)
+    pen.fill(beanie + [(57, -12), (-56, -6)], INK)
+    pen.blob(4, -72, 15)                                # pom-pom
+    pen.fill([(-54, 0), (54, -5), (53, 20), (-53, 23)], INK)            # eye mask
+    for ex, ey in [(-19, 10), (20, 7)]:
+        pen.blob(ex, ey, 10.5, 'white')
+        pen.blob(ex + 5, ey + 1, 4.5)                   # eyes looking sideways, sneaky
+    pen.stroke(catmull([(-14, 34), (4, 41), (22, 31)]), 5)               # grin
+
+    line([(40, 80), (80, 42), (98, -18)])               # front arm, holding the card up
+    pen.at(x + 98 * sc, y - 178 * sc, 0.2 * sc, 6)      # the card he's stealing, pinched by the corner
     card(pen, 'A', 'spades', seed=999, paper=True)
+    pen.at(x, y, sc)
+    hand = blob_shape(100, -24, 15, 13)
+    pen.fill(hand, 'white')
+    pen.stroke(hand, 6)
     random.seed(4242)
 
 
@@ -295,7 +330,7 @@ if __name__ == '__main__':
     random.seed(11)
     lasers(pen)
     random.seed(6)
-    thief(pen, 1140, 1020)
+    thief(pen, 1060, 990, 1.25)
     messy_stack(pen, 330, 1450, 0.3, 9, seed=31, wide=700, tall=250)
     pen.at(720, 1425, 0.26, 14)                         # the 7 of diamonds, the first card ever drawn
     card(pen, '7', 'diamonds', seed=206, paper=True)
@@ -306,4 +341,9 @@ if __name__ == '__main__':
     scribble_credits(pen, 1845)
 
     pen.finish().save(os.path.join(OUT, 'poster.png'), optimize=True)
+
+    random.seed(6)                                      # the thief on his own, big, for tracing
+    sheet = Pen(1000, 1300)
+    thief(sheet, 520, 420, 2.0)
+    sheet.finish().save(os.path.join(OUT, 'thief.png'), optimize=True)
     print('done')
