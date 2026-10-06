@@ -75,8 +75,8 @@ def spark(pen, x, y, size):
 
 def sign(pen):
     """The hanging LED sign. One wire snapped, so it hangs crooked."""
-    sx, sy, deg = 110, 170, 3.5
-    sw, sh = 1190, 470
+    sx, sy, deg = 110, 150, 3.5
+    sw, sh = 1190, 420
     pen.at(0, 0)
     pen.stroke(wobble_line([(230, 52), (sx + 120, sy + 5)], 3), 7)
     pen.stroke(wobble_line([(1180, 52), (1170, 115)], 3), 7)                  # snapped stub at the top
@@ -97,7 +97,7 @@ def sign(pen):
     crack = [(crack_x, -5), (crack_x - 30, 90), (crack_x + 25, 170), (crack_x - 15, 260), (crack_x + 40, 350), (crack_x + 5, sh + 5)]
     pen.stroke(wobble_line(crack, 4), 5, (240, 240, 240))
 
-    lines = [('MISSION', 27, 42), ('CARD VAULT', 19.5, 280)]
+    lines = [('MISSION', 27, 36), ('CARD VAULT', 19.5, 250)]
     for text, pitch, top in lines:
         bulbs, cols = led_bulbs(text, pitch)
         left = (sw - cols * pitch) / 2 + pitch / 2
@@ -280,8 +280,9 @@ if __name__ == '__main__':
     random.seed(4242)
     sign(pen)
     random.seed(77)
-    make_cards.SHAKE = 1.3                              # steadier hand so the words stay readable
-    write(pen.at(0, 0), '52 CARDS. 1 VAULT. NO PLAN.', PW / 2, 758, 54, r=8, gap=0.24, center=True)
+    make_cards.SHAKE = 1.1                              # steadier hand so the words stay readable
+    write(pen.at(0, 0), "SOME CARDS AREN'T", PW / 2, 672, 44, r=6.5, gap=0.24, center=True)
+    write(pen.at(0, 0), 'MEANT TO BE PLAYED.', PW / 2, 742, 44, r=6.5, gap=0.24, center=True)
     make_cards.SHAKE = 2.0
 
     random.seed(5)
