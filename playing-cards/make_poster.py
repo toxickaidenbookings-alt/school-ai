@@ -18,6 +18,7 @@ SPARK = (255, 200, 0)
 YELLOW = (255, 214, 40)
 LASER = (235, 30, 30)
 POSTER = [(95, 100), (PW - 100, 100), (PW - 100, PH - 95), (95, PH - 95)]
+BEAM_BOX = [(95, 100), (PW - 100, 100), (PW - 100, 1700), (95, 1700)]    # beams come up from behind the title
 
 # 5x7 sign font ("#" = bulb)
 FONT = {
@@ -164,11 +165,11 @@ def searchlights(pen, target):
     tx, ty = target
     for ox, oy in [(40, PH - 40), (PW - 40, PH - 40)]:   # lights sit just off the bottom corners
         ang = math.atan2(ty - oy, tx - ox)
-        far = math.hypot(tx - ox, ty - oy)              # beams stop on the vault, under the tagline
+        far = math.hypot(tx - ox, ty - oy)              # beams stop on the vault
         nx, ny = -math.sin(ang), math.cos(ang)
         end = (ox + math.cos(ang) * far, oy + math.sin(ang) * far)
-        left = clip((ox, oy), (end[0] + nx * 200, end[1] + ny * 200), POSTER)
-        right = clip((ox, oy), (end[0] - nx * 200, end[1] - ny * 200), POSTER)
+        left = clip((ox, oy), (end[0] + nx * 170, end[1] + ny * 170), BEAM_BOX)
+        right = clip((ox, oy), (end[0] - nx * 170, end[1] - ny * 170), BEAM_BOX)
         colour_in(pen, [left[0], left[1], right[1], right[0]], YELLOW, math.degrees(ang) + 90, 34, 6)
         for side in (left, right):
             pen.stroke(wobble_line(list(side), 4), 6)
@@ -176,9 +177,10 @@ def searchlights(pen, target):
 
 def lasers(pen):
     pen.at(0, 0)
-    for (x0, y0), (x1, y1) in [((70, 1180), (PW - 75, 1500)), ((70, 1530), (PW - 75, 1260)),
-                               ((420, 1066), (PW - 75, 1080))]:
-        pen.stroke(wobble_line([(x0, y0), (x1, y1)], 5), 5, LASER)
+    for (x0, y0), (x1, y1) in [((75, 1300), (PW - 80, 1470)), ((75, 1480), (PW - 80, 1310))]:   # an X across the floor
+        pen.stroke(wobble_line([(x0, y0), (x1, y1)], 3), 5, LASER)
+        for x, y in ((x0, y0), (x1, y1)):                                                      # little emitters on the walls
+            pen.blob(x, y, 11, LASER)
 
 
 def ring(cx, cy, r, n=16, j=6):
@@ -190,12 +192,13 @@ def ring(cx, cy, r, n=16, j=6):
 def vault(pen, cx, cy, R):
     pen.at(0, 0)
     for hy in (cy - R * .5, cy + R * .35):              # hinges
-        h = [(cx - R - 32, hy), (cx - R - 32, hy + 75), (cx - R + 20, hy + 75), (cx - R + 20, hy)]
-        pen.fill(h, INK)
-    outer = ring(cx, cy, R)
+        h = [(cx - R - 38, hy), (cx - R - 38, hy + 70), (cx - R + 20, hy + 70), (cx - R + 20, hy)]
+        pen.fill(h, 'white')
+        pen.stroke(wobble_line(h + h[:1], 2), 8)
+    outer = ring(cx, cy, R, j=3)
     pen.fill(outer, 'white')                            # covers the searchlight scribble behind it
     pen.stroke(outer, PEN + 3)
-    pen.stroke(ring(cx, cy, R * .78), PEN)
+    pen.stroke(ring(cx, cy, R * .78, j=3), PEN)
     for k in range(10):                                 # bolts
         a = 2 * math.pi * k / 10 + 0.1
         pen.blob(cx + R * .89 * math.cos(a), cy + R * .89 * math.sin(a), 12)
@@ -206,7 +209,7 @@ def vault(pen, cx, cy, R):
         pen.blob(*end, 24)
     pen.blob(cx, cy, 45)
     dx, dy = cx + R * .42, cy - R * .42                 # dial
-    pen.stroke(ring(dx, dy, 48, n=9, j=3), 8)
+    pen.stroke(ring(dx, dy, 48, n=9, j=1.2), 8)
     pen.stroke(wobble_line([(dx, dy), (dx + 22, dy - 20)], 2), 6, RED)
 
 
@@ -231,11 +234,11 @@ def thief(pen, x, y):
     """Stick figure tiptoeing over the lasers with a loot sack and a card."""
     pen.at(0, 0)
     hip = (x + 15, y + 230)
-    sack = ring(x - 60, y + 125, 70, n=10, j=8)
+    sack = ring(x - 95, y + 95, 58, n=10, j=5)        # slung over his back
     pen.fill(sack, 'white')
     pen.stroke(sack, PEN)
-    pen.stroke(wobble_line([(x - 85, y + 55), (x - 35, y + 55)], 3), PEN)                  # tied-up top
-    for sh in suit_shape('spades', x - 60, y + 130, 75):
+    pen.stroke(wobble_line([(x - 115, y + 38), (x - 70, y + 36)], 3), PEN)                 # tied-up top
+    for sh in suit_shape('spades', x - 95, y + 100, 62):
         pen.fill(sh, INK)
     head = ring(x, y, 52, n=10, j=4)
     pen.fill(head, 'white')
@@ -247,7 +250,7 @@ def thief(pen, x, y):
     pen.stroke(wobble_line([(x + 3, y + 55), hip], 4), PEN)
     pen.stroke(wobble_line([hip, (x - 55, y + 300), (x - 95, y + 360)], 4), PEN)
     pen.stroke(wobble_line([hip, (x + 70, y + 310), (x + 60, y + 370), (x + 100, y + 372)], 4), PEN)
-    pen.stroke(wobble_line([(x + 3, y + 105), (x - 40, y + 70)], 3), PEN)                    # hand on the sack
+    pen.stroke(wobble_line([(x + 3, y + 95), (x - 45, y + 60), (x - 75, y + 40)], 3), PEN)  # hand holding the sack
     pen.stroke(wobble_line([(x + 8, y + 110), (x + 80, y + 70), (x + 105, y + 5)], 4), PEN)
     pen.at(x + 70, y - 110, 0.2, 10)
     card(pen, 'A', 'spades', seed=999, paper=True)
@@ -272,7 +275,7 @@ if __name__ == '__main__':
     random.seed(4242)
     pen = Pen(PW, PH)
     random.seed(2)
-    searchlights(pen, (610, 960))
+    searchlights(pen, (610, 1080))       # beams end hidden behind the vault
     random.seed(3)
     pen.at(0, 0)
     pen.stroke(wobbly_box(42, 48, PW - 48, PH - 42, tilt=0, jit=4), PEN + 2)
