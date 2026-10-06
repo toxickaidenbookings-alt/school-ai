@@ -12,6 +12,8 @@ S = 2                      # supersample, then shrink for soft edges
 INK = (13, 13, 13)
 RED = (206, 32, 36)
 PEN = 11                   # brush radius (before supersampling)
+SHAKE = 1.0                # how shaky the hand is (the poster turns this up)
+LINE_KEEP = 0.0            # 0: lines shrink with a scaled-down card, 1: same fat marker at any size
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # Rank glyphs as strokes in a 1 x 1.4 box (y down). "s" = smooth curve.
@@ -106,7 +108,7 @@ class Pen:
 
     def stroke(self, path, r=PEN, color=INK):
         path = [self.pt(*p) for p in path]
-        r *= self.xf[2]
+        r *= self.xf[2] ** (1 - LINE_KEEP)
         dense = []
         for a, b in zip(path, path[1:]):
             n = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1]) / 2))
@@ -139,7 +141,7 @@ def wobble_line(pts, amp):
         nx, ny = -(y1 - y0) / (L or 1), (x1 - x0) / (L or 1)
         for k in range(1, steps + 1):
             t = k / steps
-            off = 0 if k == steps else random.uniform(-amp, amp)
+            off = 0 if k == steps else random.uniform(-amp, amp) * SHAKE
             out.append((x0 + (x1 - x0) * t + nx * off, y0 + (y1 - y0) * t + ny * off))
     return out
 
@@ -151,7 +153,7 @@ def glyph(pen, ch, x, y, h, deg=0, r=PEN * 0.85, color=INK):
     cx, cy = x + bw / 2, y + h / 2
     a = math.radians(deg)
     ca, sa = math.cos(a), math.sin(a)
-    shake = h * 0.022
+    shake = h * 0.022 * SHAKE
     for kind, pts in G[ch]:
         pts = [(x + px * w_unit + random.uniform(-shake, shake), y + py * w_unit + random.uniform(-shake, shake)) for px, py in pts]
         pts = [(cx + (px - cx) * ca - (py - cy) * sa, cy + (px - cx) * sa + (py - cy) * ca) for px, py in pts]
@@ -164,7 +166,8 @@ def write(pen, text, x, y, h, r=PEN * 0.85, color=INK, gap=0.25, center=False):
     if center:
         x -= sum(WIDTH.get(c, 1) * h / 1.4 + gap * h for c in text) / 2
     for ch in text:
-        x += glyph(pen, ch, x, y + random.uniform(-h * .04, h * .04), h, random.uniform(-5, 5), r, color) + gap * h
+        hh = h * random.uniform(1 - .06 * SHAKE, 1 + .06 * SHAKE)
+        x += glyph(pen, ch, x, y + random.uniform(-h * .04, h * .04) * SHAKE, hh, random.uniform(-5, 5) * SHAKE, r, color) + gap * h
 
 
 def wobbly_box(x0, y0, x1, y1, tilt=15, jit=3):
@@ -173,8 +176,8 @@ def wobbly_box(x0, y0, x1, y1, tilt=15, jit=3):
     def edge(a, b, n):
         for k in range(n):
             t = k / n
-            pts.append((a[0] + (b[0] - a[0]) * t + random.uniform(-jit, jit),
-                        a[1] + (b[1] - a[1]) * t + random.uniform(-jit, jit)))
+            pts.append((a[0] + (b[0] - a[0]) * t + random.uniform(-jit, jit) * SHAKE,
+                        a[1] + (b[1] - a[1]) * t + random.uniform(-jit, jit) * SHAKE))
     r = random.uniform(25, 45)
     edge((x0 + r, y0 + random.uniform(-5, 15)), (x1 - 10, y0 - tilt), 4)
     edge((x1 - 5, y0 - tilt * .8), (x1 + random.uniform(-5, 10), y1 - r), 5)
